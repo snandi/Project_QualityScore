@@ -29,18 +29,78 @@ source(paste(RScriptPath, 'fn_Library_QualityScore.R', sep=''))
 RPlotPath <- '~/Project_QualityScore/Plots/'
 ProjectPath <- '~/Project_QualityScore/'
 RDataPath <- '~/Project_QualityScore/RData/'
+DataPath <- '~/Project_QualityScore/Data/'
+DataPath.mf <- '/z/Proj/newtongroup/snandi/MF_cap348/'
+
+########################################################################
+## Defining some constants and important variables
+########################################################################
+ConversionFactor <- 209
+BasePairInterval <- ConversionFactor
+BackbonePixels <- 1
+DataPath.mf_Intensities <- paste(DataPath.mf, 'intensities_inca34_', BackbonePixels, 'pixel/', sep='')
+DataPath.mf_Quality <- paste(DataPath.mf, 'Project_QualityScore/', sep='')
+
+bp.loc <- fn_load_MF_bploc(ConversionFactor=ConversionFactor)
+
+Filename.Alchunk <- paste(DataPath.mf_Intensities, 'MF_cap348_inca34_cf209_minSize50_minFrag5_alignmentChunks.RData', sep='')
+load(Filename.Alchunk)
+
+########################################################################
+## Get MoleculeIDs for a fragIndex
+########################################################################
+FragIndex <- 30
+
+## Get only those molecules that have punctates both, at the beginning and end of the interval
+AlChunk.Frag <- subset(AlChunk, refStartIndex == FragIndex & refEndIndex == (FragIndex + 1))
+AlChunk.Frag$molID <- as.factor(AlChunk.Frag$molID)
+str(AlChunk.Frag)
+MoleculeID.Table <- table(AlChunk.Frag$molID)
+
+## Discard moleculeIDs that have more than one fragment aligned to the same reference fragment
+MoleculeID.Table[MoleculeID.Table > 1]
+MoleculeIDs_MultipleFrag <- names(MoleculeID.Table[MoleculeID.Table > 1])
+MoleculeID.Table <- MoleculeID.Table[MoleculeID.Table == 1]
+MoleculeIDs <- names(MoleculeID.Table)
 
 ########################################################################
 ## Read in data for a groupNum, frameNum & MoleculeID
 ########################################################################
-groupNum <- '2433096'
-frameNum <- 25
-MoleculeID <-  99
+# groupNum <- '2433096'
+# frameNum <- 25
+# MoleculeID <-  99
+Count <- 0
+CountZero <- 0
+MoleculesZero <- c()
 
-Filename <- paste(ProjectPath, groupNum, '/', frameNum, '/', 'molecule', MoleculeID, '.txt', sep='')
-Data <- read.table(Filename, sep=' ', header=T, stringsAsFactors=F)
-Data <- Data[,1:3]
-Xlim <- range(Data[Data>0])
+for(i in 1:length(MoleculeIDs)){
+#for(i in 1:100){
+    MoleculeID <- MoleculeIDs[i]
+  
+  groupNum <- substr(MoleculeID, start = 1, stop = 7)
+  MoleculeNum <- as.numeric(substr(MoleculeID, start = 13, stop = 19)) %% (ConversionFactor * 10000)
+  
+  Folderpath_Quality <- paste(DataPath.mf_Quality, 'refFrag_', FragIndex, '/group1-', groupNum, 
+                              '-inca34-outputs/', sep = '')
+  MoleculeFiles <- try(list.files(path = Folderpath_Quality, pattern = paste('molecule', MoleculeNum, sep='')))
+  if(length(MoleculeFiles) == 1){
+    Count <- Count + 1
+#     print(groupNum)
+#     print(MoleculeFiles)
+    Filename <- paste(Folderpath_Quality, MoleculeFiles, sep = '')
+    Data <- read.table(Filename, sep=' ', header=T, stringsAsFactors=F)
+    Data <- Data[,1:3]
+    Xlim <- range(Data[Data>0])
+  } 
+  if(length(MoleculeFiles) == 0){
+    CountZero <- CountZero + 1
+    MoleculesZero <- c(MoleculesZero, MoleculeID)    
+  } 
+}
+
+Count
+CountZero
+
 ########################################################################
 ## Draw histogram
 ########################################################################
@@ -65,13 +125,6 @@ Hist1_Norm <- qplot() + geom_histogram(aes(x = Pixel1_Norm)) +
         axis.title.y = element_text(size = 8)
   )
 
-Hist1_Norm_log <- qplot() + geom_histogram(aes(x = log(Pixel1_Norm))) + 
-  ggtitle(label=paste(MainTitle, 'Normalized')) + xlab(label=Xlabel) + 
-  theme(plot.title = element_text(size = 10, colour = "gray20"), 
-        axis.title.x = element_text(size = 8), 
-        axis.title.y = element_text(size = 8)
-  )
-
 Density1 <- qplot() + geom_density(aes(x = Pixel1), kernel = 'epanechnikov', 
                        fill = 'turquoise2', col = 'turquoise2') + xlim(Xlim) + 
 	ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
@@ -80,48 +133,10 @@ Density1 <- qplot() + geom_density(aes(x = Pixel1), kernel = 'epanechnikov',
         axis.title.y = element_text(size = 8)
   )
 
-## 2 pixel
-Pixel2 <- subset(Data, range1 > 0)[,'range2']
-MainTitle <- paste('Group', groupNum, 'Frame', frameNum, 'Molecule', MoleculeID)
-Xlabel <- '2 pixel dilation'
-
-Hist2 <- qplot() + geom_histogram(aes(x = Pixel2)) + xlim(Xlim) + 
-	ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
+Density1_norm <- qplot() + geom_density(aes(x = Pixel1_Norm), kernel = 'epanechnikov', 
+                                        fill = 'turquoise2', col = 'turquoise2') + 
+  ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
   theme(plot.title = element_text(size = 10, colour = "gray20"), 
         axis.title.x = element_text(size = 8), 
         axis.title.y = element_text(size = 8)
   )
-
-Density2 <- qplot() + geom_density(aes(x = Pixel2), kernel = 'epanechnikov', 
-                       fill = 'turquoise2', col = 'turquoise2') + xlim(Xlim) + 
-	ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
-  theme(plot.title = element_text(size = 10, colour = "gray20"), 
-        axis.title.x = element_text(size = 8), 
-        axis.title.y = element_text(size = 8)
-  )
-
-## 3 pixel
-Pixel3 <- subset(Data, range1 > 0)[,'range3']
-MainTitle <- paste('Group', groupNum, 'Frame', frameNum, 'Molecule', MoleculeID)
-Xlabel <- '3 pixel dilation'
-
-Hist3 <- qplot() + geom_histogram(aes(x = Pixel3)) + xlim(Xlim) + 
-	ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
-  theme(plot.title = element_text(size = 10, colour = "gray20"), 
-        axis.title.x = element_text(size = 8), 
-        axis.title.y = element_text(size = 8)
-  )
-
-Density3 <- qplot() + geom_density(aes(x = Pixel3), kernel = 'epanechnikov', 
-                       fill = 'turquoise2', col = 'turquoise2') + xlim(Xlim) + 
-	ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
-  theme(plot.title = element_text(size = 10, colour = "gray20"), 
-        axis.title.x = element_text(size = 8), 
-        axis.title.y = element_text(size = 8)
-  )
-
-Filename.out <- paste(ProjectPath, groupNum, '/', frameNum, '/', 'molecule', MoleculeID, '.pdf', sep='')
-pdf(file=Filename.out, pointsize=6)
-grid.arrange(Hist1, Density1, Hist2, Density2, Hist3, Density3, ncol=2)
-dev.off()
-
