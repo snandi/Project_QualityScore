@@ -73,8 +73,8 @@ Count <- 0
 CountZero <- 0
 MoleculesZero <- c()
 
-for(i in 1:length(MoleculeIDs)){
-#for(i in 1:100){
+#for(i in 1:length(MoleculeIDs)){
+for(i in 1:5){
     MoleculeID <- MoleculeIDs[i]
   
   groupNum <- substr(MoleculeID, start = 1, stop = 7)
@@ -106,7 +106,7 @@ CountZero
 ########################################################################
 ## 1 pixel
 Pixel1 <- subset(Data, range1 > 0)[,'range1']
-MainTitle <- paste('Group', groupNum, 'Frame', frameNum, 'Molecule', MoleculeID)
+MainTitle <- paste('Group', groupNum, 'Molecule', MoleculeID)
 Xlabel <- '1 pixel dilation'
 
 Pixel1_Norm <- Pixel1/median(Pixel1)
@@ -126,7 +126,7 @@ Hist1_Norm <- qplot() + geom_histogram(aes(x = Pixel1_Norm)) +
   )
 
 Density1 <- qplot() + geom_density(aes(x = Pixel1), kernel = 'epanechnikov', 
-                       fill = 'turquoise2', col = 'turquoise2') + xlim(Xlim) + 
+                       fill = 'gray20', col = 'gray20') + xlim(Xlim) + 
 	ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
   theme(plot.title = element_text(size = 10, colour = "gray20"), 
         axis.title.x = element_text(size = 8), 
@@ -134,9 +134,17 @@ Density1 <- qplot() + geom_density(aes(x = Pixel1), kernel = 'epanechnikov',
   )
 
 Density1_norm <- qplot() + geom_density(aes(x = Pixel1_Norm), kernel = 'epanechnikov', 
-                                        fill = 'turquoise2', col = 'turquoise2') + 
+                                        fill = 'gray20', col = 'gray20') + 
   ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
   theme(plot.title = element_text(size = 10, colour = "gray20"), 
         axis.title.x = element_text(size = 8), 
         axis.title.y = element_text(size = 8)
   )
+
+DistFit <- fitdistr(x=Pixel1_Norm, densfun='gamma')
+
+fitdistr(x=Pixel1, densfun='gamma')
+
+xgamma <- rgamma(1000, shape = 5, rate = 0.1)
+fitdistr(xgamma, "gamma")
+qplot() + geom_density(aes(x = xgamma), kernel = 'epanechnikov')
