@@ -22,3 +22,6 @@ Plots
 Plots/*
 Data
 Data/*
+RScripts_QualityScore/tornado-bar/
+RScripts_QualityScore/tornado-bar/*
+
