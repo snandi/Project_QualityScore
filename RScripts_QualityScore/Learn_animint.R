@@ -5,7 +5,7 @@ library("ggplot2")
 library('servr')
 data(UStornadoes, package = "animint")
 
-USpolygons <- map_data("state")
+USpolygons <- ggplot2::map_data("state")
 USpolygons$state <- state.abb[match(USpolygons$region, tolower(state.name))]
 
 map <- ggplot() + 
