@@ -49,7 +49,7 @@ load(Filename.Alchunk)
 ########################################################################
 ## Get MoleculeIDs for a fragIndex
 ########################################################################
-FragIndex <- 33
+FragIndex <- 30
 
 ## Get only those molecules that have punctates both, at the beginning and end of the interval
 AlChunk.Frag <- subset(AlChunk, refStartIndex == FragIndex & refEndIndex == (FragIndex + 1))
@@ -112,46 +112,6 @@ for(i in 1:length(MoleculeIDs)){
 Count
 CountZero
 
-########################################################################
-## Draw histogram
-########################################################################
-## 1 pixel
-# Pixel1 <- subset(Data, range1 > 0)[,'range1']
-# MainTitle <- paste('Group', groupNum, 'Molecule', MoleculeID)
-# Xlabel <- '1 pixel dilation'
-# 
-# Pixel1_Norm <- Pixel1/median(Pixel1)
-# 
-# Data <- as.data.frame(cbind(Pixel1=Pixel1, Pixel1_Norm=Pixel1_Norm, MoleculeID=MoleculeID))
-# Data <- within(data=Data,{
-#   Pixel1 <- as.numeric(as.vector(Pixel1))
-#   Pixel1_Norm <- as.numeric(as.vector(Pixel1_Norm))
-# })
-# str(Data)
-
-# Hist1_Norm <- qplot() + geom_histogram(aes(x = Pixel1_Norm)) + 
-#   ggtitle(label=paste(MainTitle, 'Normalized')) + xlab(label=Xlabel) + 
-#   theme(plot.title = element_text(size = 10, colour = "gray20"), 
-#         axis.title.x = element_text(size = 8), 
-#         axis.title.y = element_text(size = 8)
-#   )
-# 
-# Density1_norm <- qplot() + geom_density(aes(x = Pixel1_Norm), kernel = 'epanechnikov', 
-#                                         fill = 'gray20', col = 'gray20') + 
-#   ggtitle(label=MainTitle) + xlab(label=Xlabel) + 
-#   theme(plot.title = element_text(size = 10, colour = "gray20"), 
-#         axis.title.x = element_text(size = 8), 
-#         axis.title.y = element_text(size = 8)
-#   )
-
-# DistFit <- fitdistr(x=Pixel1, densfun='gamma')
-# Shape <- DistFit$estimate[['shape']]
-# Rate <- DistFit$estimate[['rate']]
-# X <- seq(from=range(Pixel1)[1], to = range(Pixel1)[2], length.out=length(Pixel1))
-# GammaY <- dgamma(x=X, shape=Shape, rate=Rate)
-
-#fitdistr(x=Pixel1, densfun='gamma')
-
 L <- split(x=AllPixelData, f=AllPixelData$MoleculeID)
 fn_returnGammaPar <- function(DataToFit, Colname='Pixel1_Norm'){
   DataVectorToFit <- DataToFit[,Colname]
@@ -181,46 +141,86 @@ GammaParameters <- within(data=GammaParameters,{
 })
 str(GammaParameters)
 
-ggplot() + geom_point(aes(x = Shape, y = Rate), data = GammaParameters)
-ggplot() + geom_histogram(aes(x = Shape), data = GammaParameters)
-ggplot() + geom_point(aes(x = Max, y = pValue), data = GammaParameters)
-ggplot() + geom_histogram(aes(x = q95), data = GammaParameters) + 
-  geom_vline(xintercept=quantile(x=GammaParameters$q95, probs=0.95), col='royalblue1')
+# ggplot() + geom_point(aes(x = Shape, y = Rate), data = GammaParameters)
+# 
+# ggplot() + geom_histogram(aes(x = Shape), data = GammaParameters)
+# 
+# ggplot() + geom_point(aes(x = Max, y = pValue), data = GammaParameters)
+# 
+# ggplot() + geom_histogram(aes(x = q95), data = GammaParameters) + 
+#   geom_vline(xintercept=quantile(x=GammaParameters$q95, probs=0.95), col='royalblue1')
+# 
+# ggplot() + geom_point(aes(x = q95, y = pValue), data = GammaParameters, size=3) + 
+#   geom_vline(xintercept=quantile(x=GammaParameters$q95, probs=0.95), col='royalblue1')
 
-ggplot() + geom_point(aes(x = q95, y = pValue), data = GammaParameters, size=3) + 
-  geom_vline(xintercept=quantile(x=GammaParameters$q95, probs=0.95), col='royalblue1')
-
-MaxPixel1_Norm <- max(subset(GammaParameters, pValue >= 0.05)[,'Max'])
+MaxPixel1_Norm <- max(subset(GammaParameters, pValue >= 0.1)[,'Max'])
 MaxPixel1_Norm
-nrow(subset(GammaParameters, Max<=MaxPixel1_Norm))
 
-PP <- L[[15]]$Pixel1_Norm
+Cuttoff <- min(quantile(x=GammaParameters$q95, probs=0.95), MaxPixel1_Norm)
+
+nrow(subset(GammaParameters, Max<=Cuttoff))
+
+PP <- L[[10]]$Pixel1_Norm
 DistFit <- fitdistr(x=PP, densfun='gamma')
-Shape <- DistFit$estimate[['shape']]
-Rate <- DistFit$estimate[['rate']]
-# X <- seq(from=range(AllPixelData$Pixel1)[1], to = range(AllPixelData$Pixel1)[2], 
-#          length.out=length(AllPixelData$Pixel1))
+pdf.ke <- pdfCluster::kepdf(PP)
 
-Molecule <- L[[15]]$MoleculeID[1]
+Molecule <- as.vector(L[[10]]$MoleculeID[1])
 Shape <- subset(GammaParameters, MoleculeID==Molecule)[,'Shape']
 Rate <- subset(GammaParameters, MoleculeID==Molecule)[,'Rate']
 
+Discard <- ifelse(test=subset(GammaParameters, MoleculeID==Molecule)[,'Max'] < Cuttoff, yes='Keep', no='Discard')
+
+Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, Discard)
 Hist1_Dens1 <- ggplot(data = subset(AllPixelData, MoleculeID==Molecule), aes(x = Pixel1_Norm)) + 
-  geom_histogram(aes(y = ..density..), fill='gray60') + 
+  geom_histogram(fill='gray60') + 
   geom_density(kernel = 'epanechnikov', col = 'gray20', lwd=1) + 
-  stat_function(fun = dgamma, args=c(shape=Shape, rate=Rate), col='red', size=1)
+  stat_function(fun = dgamma, args=c(shape=Shape, rate=Rate), col='red', size=1) +
+  geom_line(aes(x = pdf.ke@x, y = pdf.ke@estimate), col = 'royalblue1', size = 1) +
+  ggtitle(label=Maintitle) + 
+
+
 Hist1_Dens1
+MoleculeIDs.Final <- unique(as.vector(AllPixelData$MoleculeID))
+Molecule <- MoleculeIDs.Final[23]
 
-KSTest <- ks.test(x=subset(AllPixelData, MoleculeID==Molecule)[,'Pixel1_Norm'], y='pgamma', 
-                  rate=Rate, shape=Shape)
-pValue <- KSTest$p.value
+fn_plotDensities <- function(AllPixelData, Molecule, GammaParameters, Cuttoff){
+ PixelData <- as.data.frame(subset(AllPixelData, MoleculeID == Molecule))
+ PP <- PixelData$Pixel1_Norm
+ DistFit <- fitdistr(x=PP, densfun='gamma')
+ pdf.ke <- pdfCluster::kepdf(PP)
+ Shape <- subset(GammaParameters, MoleculeID == Molecule)[,'Shape']
+ Rate <- subset(GammaParameters, MoleculeID == Molecule)[,'Rate']
+ Discard <- ifelse(test=subset(GammaParameters, MoleculeID==Molecule)[,'Max'] < Cuttoff, yes='Keep', no='Discard')
+ Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, Discard)
+ Hist_Dens <- ggplot(data = PixelData, aes(x = Pixel1_Norm)) + 
+   geom_histogram(fill='gray60') + 
+   geom_density(kernel = 'epanechnikov', col = 'gray20', lwd=1) + 
+   stat_function(fun = dgamma, args=c(shape=Shape, rate=Rate), col='red', size=1) +
+   geom_line(aes(x = pdf.ke@x, y = pdf.ke@estimate), col = 'royalblue1', size = 1) +
+   ggtitle(label=Maintitle) + ylab(label='') + xlab(label='Normalized Pixel intensities')
+ return(Hist_Dens)
+}
 
-GG <- rgamma(n=400, shape=2.4, rate=2.4/mean(GG))
-WW <- rweibull(n=400, shape=13.2, scale=1.07)
-Data.Sim <- as.data.frame(cbind(GG, WW))
-
-ggplot(aes(x = GG), data = Data.Sim) + geom_histogram(aes(y = ..density.. ), fill='gray50') + 
-  geom_density(col='black', size=1)
-
-ggplot(aes(x = WW), data = Data.Sim) + geom_histogram(aes(y = ..density.. ), fill='gray50') + 
-  geom_density(col='black', size=1)
+Filename.plot <- paste(RPlotPath, 'refFrag', FragIndex, '_DensityPlots.pdf', sep='')
+pdf(file=Filename.plot, onefile=TRUE)
+for(Molecule in MoleculeIDs.Final){
+#   Plot <- fn_plotDensities(AllPixelData=AllPixelData, Molecule=Molecule, 
+#                            GammaParameters=GammaParameters, Cuttoff=Cuttoff)
+#   try(print(Plot))
+  PixelData <- as.data.frame(subset(AllPixelData, MoleculeID == Molecule))
+  PP <- PixelData$Pixel1_Norm
+  DistFit <- fitdistr(x=PP, densfun='gamma')
+  pdf.ke <- pdfCluster::kepdf(PP)
+  Shape <- subset(GammaParameters, MoleculeID == Molecule)[,'Shape']
+  Rate <- subset(GammaParameters, MoleculeID == Molecule)[,'Rate']
+  Discard <- ifelse(test=subset(GammaParameters, MoleculeID==Molecule)[,'Max'] < Cuttoff, yes='Keep', no='Discard')
+  Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, Discard)
+  Hist_Dens <- ggplot(data = PixelData, aes(x = Pixel1_Norm)) + 
+    geom_histogram(fill='gray60') + 
+    geom_density(kernel = 'epanechnikov', col = 'gray20', lwd=1) + 
+    stat_function(fun = dgamma, args=c(shape=Shape, rate=Rate), col='red', size=1) +
+    geom_line(aes(x = pdf.ke@x, y = pdf.ke@estimate), col = 'royalblue1', size = 1) +
+    ggtitle(label=Maintitle) + ylab(label='') + xlab(label='Normalized Pixel intensities')
+  try(print(Hist_Dens))
+}
+dev.off()
