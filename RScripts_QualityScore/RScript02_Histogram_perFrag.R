@@ -49,7 +49,7 @@ load(Filename.Alchunk)
 ########################################################################
 ## Get MoleculeIDs for a fragIndex
 ########################################################################
-FragIndex <- 30
+FragIndex <- 9
 
 ## Get only those molecules that have punctates both, at the beginning and end of the interval
 AlChunk.Frag <- subset(AlChunk, refStartIndex == FragIndex & refEndIndex == (FragIndex + 1))
@@ -93,7 +93,7 @@ for(i in 1:length(MoleculeIDs)){
     Data <- Data[,1:3]
     Xlim <- range(Data[Data>0])
     
-    Pixel1 <- subset(Data, range1 > 0)[,'range1']
+    Pixel1 <- subset(Data, intensity1 > 0)[,'intensity1']
     Pixel1_Norm <- Pixel1/median(Pixel1)
     
     PixelData <- as.data.frame(cbind(Pixel1=Pixel1, Pixel1_Norm=Pixel1_Norm, MoleculeID=MoleculeID))
@@ -111,6 +111,8 @@ for(i in 1:length(MoleculeIDs)){
 
 Count
 CountZero
+CountMultipleFrames <- nrow(AlChunk.Frag) - Count
+CountMultipleFrames/Count 
 
 L <- split(x=AllPixelData, f=AllPixelData$MoleculeID)
 fn_returnGammaPar <- function(DataToFit, Colname='Pixel1_Norm'){
