@@ -76,6 +76,7 @@ MoleculesZero <- c()
 
 i <- 1
 AllPixelData <- c()
+
 for(i in 1:length(MoleculeIDs)){
 #for(i in 1:5){
   MoleculeID <- MoleculeIDs[i]
@@ -85,16 +86,17 @@ for(i in 1:length(MoleculeIDs)){
   
   Folderpath_Quality <- paste(DataPath.mf_Quality, 'refFrag_', FragIndex, '/group1-', groupNum, 
                               '-inca34-outputs/', sep = '')
-  MoleculeFiles <- try(list.files(path = Folderpath_Quality, pattern = paste('molecule', MoleculeNum, sep = '')))
-  #PngFiles <- try(list.files(path = Folderpath_Quality, pattern = paste('molecule', MoleculeNum, sep = '')))
+  Files <- try(list.files(path = Folderpath_Quality, pattern = paste('molecule', MoleculeNum, sep = '')))
+  MoleculeFiles <- try(Files[grep(pattern = '.txt', x = Files)])
+  PngFiles <- Files[grep(pattern = '.png', x = Files)]
 
   if(length(MoleculeFiles) ==  1){
-    pngFile <- try(list.files(path = Folderpath_Quality, pattern = paste('mole', MoleculeNum, '.png', sep = '')))
     
-    if(length(pngFile) > 0){
-      pngFile <- paste(Folderpath_Quality, pngFile, sep='')
-      pngImage <- try(readPNG(source = pngFile))
-      print(MoleculeID)
+    
+    if(length(PngFiles) > 0){
+      pngFile <- try(paste0(Folderpath_Quality, PngFiles))
+      pngImage <- try(readPNG(source = pngFile, native = TRUE))
+      #plot(pngImage)
       CountPNG <- CountPNG + 1
     }
     Count <- Count + 1
