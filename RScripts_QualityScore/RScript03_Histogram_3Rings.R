@@ -91,8 +91,6 @@ for(i in 1:length(MoleculeIDs)){
   PngFiles <- Files[grep(pattern = '.png', x = Files)]
 
   if(length(MoleculeFiles) ==  1){
-    
-    
     if(length(PngFiles) > 0){
       pngFile <- try(paste0(Folderpath_Quality, PngFiles))
       pngImage <- try(readPNG(source = pngFile, native = TRUE))
@@ -126,7 +124,12 @@ for(i in 1:length(MoleculeIDs)){
       Pixel3 <- as.numeric(as.vector(Pixel3))
       Pixel3_Norm <- as.numeric(as.vector(Pixel3_Norm))
     })
-    AllPixelData <- rbind(AllPixelData, PixelData)
+    #AllPixelData <- rbind(AllPixelData, PixelData)
+    Filename.ClustPlot <- paste(Folderpath_Quality, 'group', groupNum, '_molecule', MoleculeNum, 
+                                '_GaussianCluster.pdf', sep='')
+    pdf(file = Filename.ClustPlot)
+    fn_ClusterAndPlot(PixelData = PixelData, Molecule = MoleculeID)
+    dev.off()
   } 
   if(length(MoleculeFiles) ==  0){
     CountZero <- CountZero + 1
@@ -140,116 +143,59 @@ CountPNG                      ## No. of molecules with png files
 CountMultipleFrames <- nrow(AlChunk.Frag) - Count
 CountMultipleFrames/Count     ## % of molecules which span across multiple frames
 
-PixelData_Split <- split(x = AllPixelData, f = AllPixelData$MoleculeID)
-fn_returnGammaPar <- function(DataToFit, Colname = 'Pixel1_Norm'){
-  DataVectorToFit <- DataToFit[,Colname]
-  MoleculeID <- as.vector(DataToFit$MoleculeID)[1]
-  DistFit <- fitdistr(x = DataVectorToFit, densfun = 'gamma')
-  Shape <- DistFit$estimate[['shape']]
-  Rate <- DistFit$estimate[['rate']]
-
-  KSTest <- ks.test(x = DataVectorToFit, y = 'pgamma', rate = Rate, shape = Shape)
-  pValue <- KSTest$p.value
-  Max <- max(DataVectorToFit)
-  q95 <- quantile(x = DataVectorToFit, probs = 0.95)
-  #return(list(MoleculeID = MoleculeID, Shape = Shape, Rate = Rate))
-  return(c(MoleculeID, Shape, Rate, pValue, Max, q95))
-}
-
-GammaParameters1 <- as.data.frame(do.call(what = rbind, lapply(X = PixelData_Split, FUN = fn_returnGammaPar, Colname = 'Pixel1_Norm')), 
-                                 stringsAsFactors = FALSE)
-
-colnames(GammaParameters) <- c('MoleculeID', 'Shape', 'Rate', 'pValue', 'Max', 'q95')
-GammaParameters <- within(data = GammaParameters,{
-  MoleculeID <- factor(MoleculeID)
-  Shape <- as.numeric(Shape)
-  Rate <- as.numeric(Rate)
-  pValue <- round(as.numeric(pValue), 12)
-  Max <- round(as.numeric(Max), 2)
-  q95 <- round(as.numeric(q95), 2)
-})
-str(GammaParameters)
-
-# ggplot() + geom_point(aes(x = Shape, y = Rate), data = GammaParameters)
+#PixelData_Split <- split(x = AllPixelData, f = AllPixelData$MoleculeID)
+# Molecule = MoleculeIDs[25]
 # 
-# ggplot() + geom_histogram(aes(x = Shape), data = GammaParameters)
+# PixelData <- subset(AllPixelData, MoleculeID == Molecule)
 # 
-# ggplot() + geom_point(aes(x = Max, y = pValue), data = GammaParameters)
+# PixelData_Long <- melt(data = PixelData[,c('MoleculeID', 'Pixel1', 'Pixel2', 'Pixel3')], 
+#                        id.vars = 'MoleculeID', 
+#                        measure.vars = c('Pixel1', 'Pixel2', 'Pixel3'))
+# str(PixelData_Long)
+# Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule)
+# Hist1 <- ggplot(data = PixelData_Long, aes(x = log(value), col = variable, fill = variable)) + 
+#   geom_histogram(binwidth = 0.01) + 
+#   facet_wrap(~variable, ncol = 1) + 
+#   geom_density(kernel = 'epanechnikov', col = 'gray60', lwd = 1) + 
+#   ggtitle(label = Maintitle) + xlab(label = 'log of pixel intensities')
 # 
-# ggplot() + geom_histogram(aes(x = q95), data = GammaParameters) + 
-#   geom_vline(xintercept = quantile(x = GammaParameters$q95, probs = 0.95), col = 'royalblue1')
+# PixelData_Norm_Long <- melt(data = PixelData[,c('MoleculeID', 'Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm')], 
+#                        id.vars = 'MoleculeID', 
+#                        measure.vars = c('Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm'))
 # 
-# ggplot() + geom_point(aes(x = q95, y = pValue), data = GammaParameters, size = 3) + 
-#   geom_vline(xintercept = quantile(x = GammaParameters$q95, probs = 0.95), col = 'royalblue1')
-
-MaxPixel1_Norm <- max(subset(GammaParameters, pValue > =  0.1)[,'Max'])
-MaxPixel1_Norm
-
-Cuttoff <- min(quantile(x = GammaParameters$q95, probs = 0.95), MaxPixel1_Norm)
-
-nrow(subset(GammaParameters, Max< = Cuttoff))
-
-PP <- L[[10]]$Pixel1_Norm
-DistFit <- fitdistr(x = PP, densfun = 'gamma')
-pdf.ke <- pdfCluster::kepdf(PP)
-
-Molecule <- as.vector(L[[10]]$MoleculeID[1])
-Shape <- subset(GammaParameters, MoleculeID == Molecule)[,'Shape']
-Rate <- subset(GammaParameters, MoleculeID == Molecule)[,'Rate']
-
-Discard <- ifelse(test = subset(GammaParameters, MoleculeID == Molecule)[,'Max'] < Cuttoff, yes = 'Keep', no = 'Discard')
-
-Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, Discard)
-Hist1_Dens1 <- ggplot(data = subset(AllPixelData, MoleculeID == Molecule), aes(x = Pixel1_Norm)) + 
-  geom_histogram(fill = 'gray60') + 
-  geom_density(kernel = 'epanechnikov', col = 'gray20', lwd = 1) + 
-  stat_function(fun = dgamma, args = c(shape = Shape, rate = Rate), col = 'red', size = 1) +
-  geom_line(aes(x = pdf.ke@x, y = pdf.ke@estimate), col = 'royalblue1', size = 1) +
-  ggtitle(label = Maintitle) + 
-
-
-Hist1_Dens1
-MoleculeIDs.Final <- unique(as.vector(AllPixelData$MoleculeID))
-Molecule <- MoleculeIDs.Final[23]
-
-fn_plotDensities <- function(AllPixelData, Molecule, GammaParameters, Cuttoff){
- PixelData <- as.data.frame(subset(AllPixelData, MoleculeID ==  Molecule))
- PP <- PixelData$Pixel1_Norm
- DistFit <- fitdistr(x = PP, densfun = 'gamma')
- pdf.ke <- pdfCluster::kepdf(PP)
- Shape <- subset(GammaParameters, MoleculeID ==  Molecule)[,'Shape']
- Rate <- subset(GammaParameters, MoleculeID ==  Molecule)[,'Rate']
- Discard <- ifelse(test = subset(GammaParameters, MoleculeID == Molecule)[,'Max'] < Cuttoff, yes = 'Keep', no = 'Discard')
- Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, Discard)
- Hist_Dens <- ggplot(data = PixelData, aes(x = Pixel1_Norm)) + 
-   geom_histogram(fill = 'gray60') + 
-   geom_density(kernel = 'epanechnikov', col = 'gray20', lwd = 1) + 
-   stat_function(fun = dgamma, args = c(shape = Shape, rate = Rate), col = 'red', size = 1) +
-   geom_line(aes(x = pdf.ke@x, y = pdf.ke@estimate), col = 'royalblue1', size = 1) +
-   ggtitle(label = Maintitle) + ylab(label = '') + xlab(label = 'Normalized Pixel intensities')
- return(Hist_Dens)
-}
-
-Filename.plot <- paste(RPlotPath, 'refFrag', FragIndex, '_DensityPlots.pdf', sep = '')
-pdf(file = Filename.plot, onefile = TRUE)
-for(Molecule in MoleculeIDs.Final){
-#   Plot <- fn_plotDensities(AllPixelData = AllPixelData, Molecule = Molecule, 
-#                            GammaParameters = GammaParameters, Cuttoff = Cuttoff)
-#   try(print(Plot))
-  PixelData <- as.data.frame(subset(AllPixelData, MoleculeID ==  Molecule))
-  PP <- PixelData$Pixel1_Norm
-  DistFit <- fitdistr(x = PP, densfun = 'gamma')
-  pdf.ke <- pdfCluster::kepdf(PP)
-  Shape <- subset(GammaParameters, MoleculeID ==  Molecule)[,'Shape']
-  Rate <- subset(GammaParameters, MoleculeID ==  Molecule)[,'Rate']
-  Discard <- ifelse(test = subset(GammaParameters, MoleculeID == Molecule)[,'Max'] < Cuttoff, yes = 'Keep', no = 'Discard')
-  Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, Discard)
-  Hist_Dens <- ggplot(data = PixelData, aes(x = Pixel1_Norm)) + 
-    geom_histogram(fill = 'gray60') + 
-    geom_density(kernel = 'epanechnikov', col = 'gray20', lwd = 1) + 
-    stat_function(fun = dgamma, args = c(shape = Shape, rate = Rate), col = 'red', size = 1) +
-    geom_line(aes(x = pdf.ke@x, y = pdf.ke@estimate), col = 'royalblue1', size = 1) +
-    ggtitle(label = Maintitle) + ylab(label = '') + xlab(label = 'Normalized Pixel intensities')
-  try(print(Hist_Dens))
-}
-dev.off()
+# Model3 <- Mclust(data = log(PixelData[,'Pixel3_Norm']), G=1:4)
+# summary(Model3)
+# NClust3 <- Model3$G
+# Model2 <- Mclust(data = log(PixelData[,'Pixel2_Norm']), G=1:4)
+# summary(Model2)
+# NClust2 <- Model2$G
+# Model1 <- Mclust(data = log(PixelData[,'Pixel1_Norm']), G=1:4)
+# summary(Model1)
+# NClust1 <- Model1$G
+# 
+# PixelData$Cluster1 <- as.factor(Model1$classification)
+# PixelData$Cluster2 <- as.factor(Model2$classification)
+# PixelData$Cluster3 <- as.factor(Model3$classification)
+# 
+# ClusterMeans3 <- unlist(lapply(X=split(x = PixelData[,'Pixel3_Norm'], f = PixelData$Cluster3), FUN=mean))
+# MaxDiff3 <- max(ClusterMeans3) - min(ClusterMeans3)
+# ClusterMeans2 <- unlist(lapply(X=split(x = PixelData[,'Pixel2_Norm'], f = PixelData$Cluster2), FUN=mean))
+# MaxDiff2 <- max(ClusterMeans2) - min(ClusterMeans2)
+# ClusterMeans1 <- unlist(lapply(X=split(x = PixelData[,'Pixel1_Norm'], f = PixelData$Cluster1), FUN=mean))
+# MaxDiff1 <- max(ClusterMeans1) - min(ClusterMeans1)
+# 
+# Discard <- ifelse(test = (MaxDiff3 > 0.5) && (MaxDiff2 > 0.3) , yes = 'Discard', no = 'Keep')
+# MaxDiff3
+# 
+# SurfaceNoiseScore <- exp(-MaxDiff3)*exp(-MaxDiff2)*exp(-MaxDiff1)
+# Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, '\n', 
+#                    'Surface Noise Score', round(SurfaceNoiseScore, 4), 
+#                    ', Num of Clusters', NClust3, ',', Discard)
+# 
+# Hist1_Norm <- ggplot(data = PixelData_Norm_Long, aes(x = value, col = variable, fill = variable)) + 
+#   geom_histogram(binwidth = 0.01) + 
+#   facet_wrap(~variable, ncol = 1) +
+#   geom_density(kernel = 'epanechnikov', col = 'gray50', lwd = 1) + 
+#   ggtitle(label = Maintitle) + xlab(label = 'Normalized pixel intensities')
+# 
+# Hist1_Norm
