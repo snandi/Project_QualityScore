@@ -23,9 +23,10 @@ fn_ClusterAndPlot <- function(PixelData, Molecule){
   MaxDiff1 <- max(ClusterMeans1) - min(ClusterMeans1)
   
   Discard <- ifelse(test = (MaxDiff3 > 0.5) && (MaxDiff2 > 0.3) , yes = 'Discard', no = 'Keep')
-  MaxDiff3
-  
+    
   SurfaceNoiseScore <- exp(-MaxDiff3)*exp(-MaxDiff2)*exp(-MaxDiff1)
+  if(SurfaceNoiseScore < 0.6) Discard <- 'Discard'
+  
   Maintitle <- paste('Reference Fragment', FragIndex, 'Molecule', Molecule, '\n', 
                      'Surface Noise Score', round(SurfaceNoiseScore, 4), 
                      ', Num of Clusters', NClust3, ',', Discard)
