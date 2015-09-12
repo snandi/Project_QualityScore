@@ -49,9 +49,10 @@ load(Filename.Alchunk)
 ########################################################################
 ## Get MoleculeIDs for a fragIndex
 ########################################################################
-FragIndex <- 1
+FragIndex <- 28
 
-for(FragIndex in 1:37){
+for(FragIndex in 28:37){
+  print(FragIndex)
   ## Get only those molecules that have punctates both, at the beginning and end of the interval
   AlChunk.Frag <- subset(AlChunk, refStartIndex ==  FragIndex & refEndIndex ==  (FragIndex + 1))
   AlChunk.Frag$molID <- as.factor(AlChunk.Frag$molID)
@@ -130,8 +131,12 @@ for(FragIndex in 1:37){
                                   '_GaussianCluster.pdf', sep='')
       pdf(file = Filename.ClustPlot)
       fn_ClusterAndPlot(PixelData = PixelData, Molecule = MoleculeID)
-      plot.new()
-      grid.raster(pngImage, x=0.5, y=0.5, width=1, height=1)
+      if(!(class(pngImage) == 'try-error')){
+        plot.new()
+        try(grid.raster(pngImage, x=0.5, y=0.5, width=1, height=1))
+      } else{
+        print(paste(pngFile, 'Not valid'))
+      }
       dev.off()
     } 
     if(length(MoleculeFiles) ==  0){
