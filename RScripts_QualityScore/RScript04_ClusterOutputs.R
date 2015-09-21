@@ -3,10 +3,8 @@ rm(list = objects(all.names = TRUE))
 #dev.off()
 
 ########################################################################
-## This script reads in the pixel intensity values produced by Chengyue's
-## python script and plots histograms. There will be three levels of pixel
-## intensity values, one pixel, two pixels and three pixels around the 
-## backbone of the molecules, after leaving out +/-2 pixels all around 
+## This script extends RScript03 and produces a table with more cluster
+## outputs, to better classify "bad" molecules
 ########################################################################
 
 ########################################################################
@@ -49,12 +47,12 @@ load(Filename.Alchunk)
 ########################################################################
 ## Get MoleculeIDs for a fragIndex
 ########################################################################
-FragIndex <- 38
+FragIndex <- 30
 
-for(FragIndex in 28:37){
+for(FragIndex in 3:38){
   print(FragIndex)
   ## Get only those molecules that have punctates both, at the beginning and end of the interval
-  AlChunk.Frag <- subset(AlChunk, refStartIndex ==  FragIndex & refEndIndex ==  (FragIndex + 1))
+  AlChunk.Frag <- subset(AlChunk, refStartIndex ==   FragIndex & refEndIndex ==   (FragIndex + 1))
   AlChunk.Frag$molID <- as.factor(AlChunk.Frag$molID)
   #   str(AlChunk.Frag)
   MoleculeID.Table <- table(AlChunk.Frag$molID)
@@ -62,7 +60,7 @@ for(FragIndex in 28:37){
   ## Discard moleculeIDs that have more than one fragment aligned to the same reference fragment
   MoleculeID.Table[MoleculeID.Table > 1]
   MoleculeIDs_MultipleFrag <- names(MoleculeID.Table[MoleculeID.Table > 1])
-  MoleculeID.Table <- MoleculeID.Table[MoleculeID.Table ==  1]
+  MoleculeID.Table <- MoleculeID.Table[MoleculeID.Table ==   1]
   MoleculeIDs <- names(MoleculeID.Table)
   
   ########################################################################
@@ -75,12 +73,16 @@ for(FragIndex in 28:37){
   CountZero <- 0
   CountPNG <- 0
   MoleculesZero <- c()
+  Filepath.Below75 <- paste0(DataPath.mf_Quality, 'refFrag_', FragIndex, '/refFrag', FragIndex, '_Below75.txt')
+  system(command = paste('rm -f', Filepath.Below75))
   
-  i <- 1
-  AllPixelData <- c()
+  i <- which(MoleculeIDs ==  '2427976_734_2090549')
+  #i <- 1
+  ClusterMetrics <- c()
+  FilenamesBelow75 <- c()
   
   for(i in 1:length(MoleculeIDs)){
-    #for(i in 1:5){
+    #for(i in 1:50){
     MoleculeID <- MoleculeIDs[i]
     
     groupNum <- substr(MoleculeID, start = 1, stop = 7)
@@ -92,7 +94,7 @@ for(FragIndex in 28:37){
     MoleculeFiles <- try(Files[grep(pattern = '.txt', x = Files)])
     PngFiles <- Files[grep(pattern = '.png', x = Files)]
     
-    if(length(MoleculeFiles) ==  1){
+    if(length(MoleculeFiles) ==   1){
       if(length(PngFiles) > 0){
         pngFile <- try(paste0(Folderpath_Quality, PngFiles))
         pngImage <- try(readPNG(source = pngFile, native = TRUE))
@@ -104,7 +106,7 @@ for(FragIndex in 28:37){
       #     print(MoleculeFiles)
       Filename.txt <- paste(Folderpath_Quality, MoleculeFiles, sep = '')
       Data <- read.table(Filename.txt, sep = ' ', header = T, stringsAsFactors = F)
-      Data <- Data[,1:3]
+      Data <- Data[,c('intensity1', 'intensity2', 'intensity3')]
       Xlim <- range(Data[Data>0])
       
       Pixel1 <- subset(Data, intensity1 > 0)[,'intensity1']
@@ -126,28 +128,33 @@ for(FragIndex in 28:37){
         Pixel3 <- as.numeric(as.vector(Pixel3))
         Pixel3_Norm <- as.numeric(as.vector(Pixel3_Norm))
       })
-      #AllPixelData <- rbind(AllPixelData, PixelData)
-      Filename.ClustPlot <- paste(Folderpath_Quality, 'group', groupNum, '_molecule', MoleculeNum, 
-                                  '_GaussianCluster.pdf', sep='')
-      pdf(file = Filename.ClustPlot)
-      fn_ClusterAndPlot(PixelData = PixelData, Molecule = MoleculeID)
-      if(!(class(pngImage) == 'try-error')){
+      
+      Filename.ClustPlot <- paste0('group', groupNum, '_molecule', MoleculeNum, '_GaussianCluster.pdf')
+      Filepath.ClustPlot <- paste0(Folderpath_Quality, Filename.ClustPlot)
+      
+      pdf(file = Filepath.ClustPlot)
+      
+      ClusterOutput <- fn_ClusterPlotOutput(PixelData = PixelData, Molecule = MoleculeID)
+      ClusterMetrics <- rbind(ClusterMetrics, unlist(ClusterOutput[['ClusterMetrics']]))
+      if(ClusterOutput[['ClusterMetrics']][['SurfaceNoiseScore']] < =  0.75){
+        cat(paste0('group1-', groupNum, '-inca34-outputs/', Filename.ClustPlot), 
+            file = Filepath.Below75, sep = '\n', append = T)  
+      }
+      print(ClusterOutput[['HistPlot']])
+      
+      if(!(class(pngImage) ==  'try-error')){
         plot.new()
-        try(grid.raster(pngImage, x=0.5, y=0.5, width=1, height=1))
+        try(grid.raster(pngImage, x = 0.5, y = 0.5, width = 1, height = 1))
       } else{
         print(paste(pngFile, 'Not valid'))
       }
       dev.off()
     } 
-    if(length(MoleculeFiles) ==  0){
+    if(length(MoleculeFiles) ==   0){
       CountZero <- CountZero + 1
       MoleculesZero <- c(MoleculesZero, MoleculeID)    
     } 
   }
+  
+  ClusterMetrics.DF <- fn_saveClusterMetrics(ClusterMetrics, DataPath.mf_Quality, FragIndex)
 }
-# Count                         ## No. of molecules with no text files in the folder
-# CountZero                     ## No. of molecules which are completely in 1 frame
-# CountPNG                      ## No. of molecules with png files
-# CountMultipleFrames <- nrow(AlChunk.Frag) - Count
-# CountMultipleFrames/Count     ## % of molecules which span across multiple frames
-
