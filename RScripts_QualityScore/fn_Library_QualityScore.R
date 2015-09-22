@@ -4,7 +4,7 @@
 ## This function clusters the intensities around the molecules and plots the histograms
 ## This is called by RScript03
 ##########################################################################################
-fn_ClusterAndPlot <- function(PixelData, Molecule){
+fn_ClusterAndPlot <- function(PixelData, Molecule, FragIndex, ...){
   PixelData_Norm_Long <- melt(data = PixelData[,c('MoleculeID', 'Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm')], 
                               id.vars = 'MoleculeID', 
                               measure.vars = c('Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm'))
@@ -51,7 +51,7 @@ fn_ClusterAndPlot <- function(PixelData, Molecule){
 ## This function outputs cluster metrics, in addition to the histogram plots. This is 
 ## the only change to fn_ClusterAndPlot. This is called by RScript04
 ##########################################################################################
-fn_ClusterPlotOutput <- function(PixelData, Molecule, ...){
+fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, ...){
   PixelData_Norm_Long <- melt(data = PixelData[,c('MoleculeID', 'Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm')], 
                               id.vars = 'MoleculeID', 
                               measure.vars = c('Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm'))
@@ -112,6 +112,16 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, ...){
   # print(Hist1_Norm)
   return(list(ClusterMetrics = ClusterMetrics, HistPlot = Hist1_Norm))
 }
+
+# The Dunn Index is the ratio of the smallest distance between observations not in the same cluster to
+# the largest intra-cluster distance. The Dunn Index has a value between zero and infinity, and should
+# be maximized. For details see the package vignette.
+
+
+# The connectivity indicates the degree of connectedness of the clusters, as determined by the knearest
+# neighbors. The neighbSize argument specifies the number of neighbors to use. The connectivity
+# has a value between 0 and infinity and should be minimized. For details see the package
+# vignette.
 
 ##########################################################################################
 ## This function formats & saves the ClusterMetrics data

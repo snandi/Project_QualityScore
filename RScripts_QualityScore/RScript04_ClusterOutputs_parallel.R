@@ -3,8 +3,7 @@ rm(list = objects(all.names = TRUE))
 #dev.off()
 
 ########################################################################
-## This script extends RScript03 and produces a table with more cluster
-## outputs, to better classify "bad" molecules
+## This script is the parallel version of RScript04_ClusterOutputs.R
 ########################################################################
 
 ########################################################################
@@ -45,11 +44,16 @@ Filename.Alchunk <- paste(DataPath.mf_Intensities, 'MF_cap348_inca34_cf209_minSi
 load(Filename.Alchunk)
 
 ########################################################################
-## Get MoleculeIDs for a fragIndex
+## Main function to be executed in parallel
 ########################################################################
-FragIndex <- 30
-
-for(FragIndex in 3:38){
+fn_produceClusterPlots_par <- function(AlChunk, FragIndex, DataPath.mf_Quality){
+  ### This function is a replication of whats inside the for loop in RScript4
+  ### This function can be executed in parallel
+  
+  #AlChunk
+  #FragIndex
+  #DataPath.mf_Quality
+  
   print(FragIndex)
   ## Get only those molecules that have punctates both, at the beginning and end of the interval
   AlChunk.Frag <- subset(AlChunk, refStartIndex ==   FragIndex & refEndIndex ==   (FragIndex + 1))
@@ -161,4 +165,27 @@ for(FragIndex in 3:38){
   }
   
   ClusterMetrics.DF <- fn_saveClusterMetrics(ClusterMetrics, DataPath.mf_Quality, FragIndex)
+  
 }
+########################################################################
+# 
+########################################################################
+## For sequential execution
+########################################################################
+# fn_produceClusterPlots_par(
+#   AlChunk             = AlChunk, 
+#   FragIndex           = 38, 
+#   DataPath.mf_Quality = DataPath.mf_Quality
+# )
+########################################################################
+
+########################################################################
+## For parallel execution
+########################################################################
+NCores <- 11
+cl <- makeCluster(NCores)
+registerDoParallel(cl)
+foreach(FragIndex = 13:33, .inorder=FALSE, .packages=Packages_Par) %dopar% fn_produceClusterPlots_par(AlChunk, FragIndex, DataPath.mf_Quality)
+stopCluster(cl)
+gc()
+
