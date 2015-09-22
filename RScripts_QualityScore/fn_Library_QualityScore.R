@@ -51,7 +51,7 @@ fn_ClusterAndPlot <- function(PixelData, Molecule, FragIndex, ...){
 ## This function outputs cluster metrics, in addition to the histogram plots. This is 
 ## the only change to fn_ClusterAndPlot. This is called by RScript04
 ##########################################################################################
-fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, ...){
+fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, ...){
   PixelData_Norm_Long <- melt(data = PixelData[,c('MoleculeID', 'Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm')], 
                               id.vars = 'MoleculeID', 
                               measure.vars = c('Pixel1_Norm', 'Pixel2_Norm', 'Pixel3_Norm'))
@@ -94,13 +94,14 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, ...){
                          NClust1 = NClust1, MaxDiff1 = MaxDiff1, Conn1 = Conn1, Dunn1 = Dunn1, 
                          NClust2 = NClust2, MaxDiff2 = MaxDiff2, Conn2 = Conn2, Dunn2 = Dunn2, 
                          NClust3 = NClust3, MaxDiff3 = MaxDiff3, Conn3 = Conn3, Dunn3 = Dunn3, 
-                         SurfaceNoiseScore = SurfaceNoiseScore, 
+                         SurfaceNoiseScore = SurfaceNoiseScore, StraightScore = StraightScore,
                          Discard = Discard
   )
   
   Maintitle <- paste('Ref Frag', FragIndex, 'Molecule', Molecule, '\n', 
-                     'Surface Noise Score', round(SurfaceNoiseScore, 4), 
-                     ', # of Clusters in 3rd layer,', NClust3, '\n', 'Decision:', Discard)
+                     'Surface Noise Score:', round(SurfaceNoiseScore, 4), 
+                     'Straight Score:', StraightScore, '\n', 
+                     ', # of Clusters in 3rd layer,', NClust3, 'Decision:', Discard)
   
   Hist1_Norm <- ggplot(data = PixelData_Norm_Long, aes(x = value, col = variable, fill = variable)) + 
     geom_histogram(binwidth = 0.01) + 
@@ -146,9 +147,10 @@ fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex
     Dunn3 <- round(as.numeric(as.vector(Dunn3)), 4)
     
     SurfaceNoiseScore <- round(as.numeric(as.vector(SurfaceNoiseScore)), 4)
+    StraightScore <- round(as.numeric(as.vector(StraightScore)), 4)
   })
   
-  Below75 <- subset(ClusterMetrics, SurfaceNoiseScore < 0.75)[,c('MoleculeID', 'SurfaceNoiseScore', 'Discard')]
+  Below75 <- subset(ClusterMetrics, SurfaceNoiseScore < 0.75)
 
   Filename.ClustMetrics <- paste0(DataPath.mf_Quality, 'refFrag_', FragIndex, '/refFrag', FragIndex, 
                                  '_SurfaceNoiseScore.txt')
@@ -173,3 +175,15 @@ fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex
   
   return(ClusterMetrics)
 }
+
+##########################################################################################
+## This function reads the straight score file
+##########################################################################################
+fn_readStraighScoreFile <- function(DataPath.mf_Quality, FragIndex, ...){
+  Folderpath_Quality <- paste0(DataPath.mf_Quality, 'refFrag_', FragIndex, '/')
+  Filename_Straight <- paste0(Folderpath_Quality, 'refFrag', FragIndex, '_StraightScore.txt')
+  File_Straight <- try(read.table(Filename_Straight, sep = ' ', header = T, stringsAsFactors = F))
+  File_Straight$X <- NULL
+  return(File_Straight)  
+}
+

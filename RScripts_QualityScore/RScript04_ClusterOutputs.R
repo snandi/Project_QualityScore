@@ -81,9 +81,12 @@ for(FragIndex in 3:38){
   ClusterMetrics <- c()
   FilenamesBelow75 <- c()
   
+  File_Straight <- fn_readStraighScoreFile(DataPath.mf_Quality, FragIndex)
+  
   for(i in 1:length(MoleculeIDs)){
     #for(i in 1:50){
     MoleculeID <- MoleculeIDs[i]
+    StraightScore <- round(File_Straight$score[File_Straight$MoleculeID == MoleculeID], 4)
     
     groupNum <- substr(MoleculeID, start = 1, stop = 7)
     MoleculeNum <- as.numeric(substr(MoleculeID, start = 13, stop = 19)) %% (ConversionFactor * 10000)
@@ -133,11 +136,12 @@ for(FragIndex in 3:38){
       Filepath.ClustPlot <- paste0(Folderpath_Quality, Filename.ClustPlot)
       
       pdf(file = Filepath.ClustPlot)
-      
+    
       ClusterOutput <- fn_ClusterPlotOutput(
-        PixelData = PixelData, 
-        Molecule  = MoleculeID, 
-        FragIndex = FragIndex
+        PixelData     = PixelData, 
+        Molecule      = MoleculeID, 
+        FragIndex     = FragIndex, 
+        StraightScore = StraightScore
       )
       ClusterMetrics <- rbind(ClusterMetrics, unlist(ClusterOutput[['ClusterMetrics']]))
       if(ClusterOutput[['ClusterMetrics']][['SurfaceNoiseScore']] <=  0.75){

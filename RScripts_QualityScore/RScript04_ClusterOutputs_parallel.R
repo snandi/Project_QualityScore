@@ -85,9 +85,12 @@ fn_produceClusterPlots_par <- function(AlChunk, FragIndex, DataPath.mf_Quality){
   ClusterMetrics <- c()
   FilenamesBelow75 <- c()
   
+  File_Straight <- fn_readStraighScoreFile(DataPath.mf_Quality, FragIndex)
+
   for(i in 1:length(MoleculeIDs)){
     #for(i in 1:50){
     MoleculeID <- MoleculeIDs[i]
+    StraightScore <- round(File_Straight$score[File_Straight$MoleculeID == MoleculeID], 4)
     
     groupNum <- substr(MoleculeID, start = 1, stop = 7)
     MoleculeNum <- as.numeric(substr(MoleculeID, start = 13, stop = 19)) %% (ConversionFactor * 10000)
@@ -139,9 +142,10 @@ fn_produceClusterPlots_par <- function(AlChunk, FragIndex, DataPath.mf_Quality){
       pdf(file = Filepath.ClustPlot)
       
       ClusterOutput <- fn_ClusterPlotOutput(
-        PixelData = PixelData, 
-        Molecule  = MoleculeID, 
-        FragIndex = FragIndex
+        PixelData     = PixelData, 
+        Molecule      = MoleculeID, 
+        FragIndex     = FragIndex, 
+        StraightScore = StraightScore
       )
       ClusterMetrics <- rbind(ClusterMetrics, unlist(ClusterOutput[['ClusterMetrics']]))
       if(ClusterOutput[['ClusterMetrics']][['SurfaceNoiseScore']] <=  0.75){
@@ -182,10 +186,10 @@ fn_produceClusterPlots_par <- function(AlChunk, FragIndex, DataPath.mf_Quality){
 ########################################################################
 ## For parallel execution
 ########################################################################
-NCores <- 11
+NCores <- 12
 cl <- makeCluster(NCores)
 registerDoParallel(cl)
-foreach(FragIndex = 13:33, .inorder=FALSE, .packages=Packages_Par) %dopar% fn_produceClusterPlots_par(AlChunk, FragIndex, DataPath.mf_Quality)
+foreach(FragIndex = 0:38, .inorder=FALSE, .packages=Packages_Par) %dopar% fn_produceClusterPlots_par(AlChunk, FragIndex, DataPath.mf_Quality)
 stopCluster(cl)
 gc()
 
