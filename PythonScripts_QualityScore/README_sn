@@ -1,3 +1,10 @@
 ### This file has instructions to execute the python scripts ###
 
+1. produce_molelist.py extracts the list of moleculeID's aligned to a particular Interval of any chromosome.
+   > python produce_molelist.py Interval Chr
+   > python produce_molelist.py 12 7
+   ## Updated comment in line 25
+   ## Updated to add chrnum as a user input, line 50, 51
+   ## Added global variables in lines 29-31
 
+2. 
