@@ -133,7 +133,7 @@ dim(Data2_Intensity_toRegist)
 ########################################################################
 ## Perform Iterated Registration of the actual Nmaps
 ########################################################################
-Lambdas_ConstrainedWarping <- c(1.2, 0.7, 0.1)
+Lambdas_ConstrainedWarping <- c(1, 0.3, 0.05)
 IterRegData_1 <- fn_iteratedRegistration(Data_toRegist = Data1_toRegist, 
                                          Lambdas_ConstrainedWarping = Lambdas_ConstrainedWarping, 
                                          FragIndex = FragIndex_1, 
