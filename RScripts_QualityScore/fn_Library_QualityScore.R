@@ -108,6 +108,7 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, 
     facet_wrap(~variable, ncol = 1) +
     geom_density(kernel = 'epanechnikov', col = 'gray50', lwd = 1) + 
     ggtitle(label = Maintitle) + xlab(label = 'Normalized pixel intensities') +
+    ylab(label = 'Frequency') +
     theme(plot.title = element_text(hjust = 0))
   
   # print(Hist1_Norm)
@@ -179,7 +180,7 @@ fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex
 ##########################################################################################
 ## This function reads the straight score file
 ##########################################################################################
-fn_readStraighScoreFile <- function(DataPath.mf_Quality, FragIndex, ...){
+fn_readStraightScoreFile <- function(DataPath.mf_Quality, FragIndex, ...){
   Folderpath_Quality <- paste0(DataPath.mf_Quality, 'refFrag_', FragIndex, '/')
   Filename_Straight <- paste0(Folderpath_Quality, 'refFrag', FragIndex, '_StraightScore.txt')
   File_Straight <- try(read.table(Filename_Straight, sep = ' ', header = T, stringsAsFactors = F))

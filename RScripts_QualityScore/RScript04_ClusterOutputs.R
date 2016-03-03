@@ -81,7 +81,7 @@ for(FragIndex in 3:38){
   ClusterMetrics <- c()
   FilenamesBelow75 <- c()
   
-  File_Straight <- fn_readStraighScoreFile(DataPath.mf_Quality, FragIndex)
+  File_Straight <- fn_readStraightScoreFile(DataPath.mf_Quality, FragIndex)
   
   for(i in 1:length(MoleculeIDs)){
     #for(i in 1:50){
