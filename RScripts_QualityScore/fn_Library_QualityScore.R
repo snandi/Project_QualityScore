@@ -90,18 +90,33 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, 
   
   if(SurfaceNoiseScore < 0.65) Discard <- 'Discard'
   
+  ################################################################################
+  ## Logistic regression classifier (from Shilu's results)
+  ## Filename: Average_Coefficients.txt
+  ################################################################################
+  ## logit(Y) = b0+b1*MaxDiff1+b2*MaxDiff3+b3*Conn2
+  b0 = -11.47
+  b1 = 30.27
+  b2 = 58.54
+  b3 = 0.07
+  Cutoff = 0.16
+  
+  LogitY <- b0 + b1*MaxDiff1 + b2*MaxDiff3 + b3*Conn2
+  PY1 <- exp(LogitY)/(1 + exp(LogitY))  ## Prob(Y = 1)
+  Discard_Model <- (PY1 > Cutoff)
+
   ClusterMetrics <- list(MoleculeID = Molecule, 
                          NClust1 = NClust1, MaxDiff1 = MaxDiff1, Conn1 = Conn1, Dunn1 = Dunn1, 
                          NClust2 = NClust2, MaxDiff2 = MaxDiff2, Conn2 = Conn2, Dunn2 = Dunn2, 
                          NClust3 = NClust3, MaxDiff3 = MaxDiff3, Conn3 = Conn3, Dunn3 = Dunn3, 
                          SurfaceNoiseScore = SurfaceNoiseScore, StraightScore = StraightScore,
-                         Discard = Discard
+                         Discard = Discard, PY1 = PY1, Discard_Model = Discard_Model
   )
-  
+
   Maintitle <- paste('Ref Frag', FragIndex, 'Molecule', Molecule, '\n', 
                      'Surface Noise Score:', round(SurfaceNoiseScore, 4), 
                      'Straight Score:', StraightScore, '\n', 
-                     ', # of Clusters in 3rd layer,', NClust3, 'Decision:', Discard)
+                     'Decision:', Discard, 'Model Discard', Discard_Model)
   
   Hist1_Norm <- ggplot(data = PixelData_Norm_Long, aes(x = value, col = variable, fill = variable)) + 
     geom_histogram(binwidth = 0.01) + 
@@ -109,7 +124,7 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, 
     geom_density(kernel = 'epanechnikov', col = 'gray50', lwd = 1) + 
     ggtitle(label = Maintitle) + xlab(label = 'Normalized pixel intensities') +
     ylab(label = 'Frequency') +
-    theme(plot.title = element_text(hjust = 0))
+    theme(plot.title = element_text(hjust = 0, size = 8))
   
   # print(Hist1_Norm)
   return(list(ClusterMetrics = ClusterMetrics, HistPlot = Hist1_Norm))
@@ -128,7 +143,7 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, 
 ##########################################################################################
 ## This function formats & saves the ClusterMetrics data
 ##########################################################################################
-fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex){
+fn_formatClusterMetrics <- function(ClusterMetrics){
   ClusterMetrics <- as.data.frame(ClusterMetrics, StringsAsFactors = F)
   
   ClusterMetrics <- within(data = ClusterMetrics,{
@@ -149,7 +164,16 @@ fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex
     
     SurfaceNoiseScore <- round(as.numeric(as.vector(SurfaceNoiseScore)), 4)
     StraightScore <- round(as.numeric(as.vector(StraightScore)), 4)
+
+    PY1 <- round(as.numeric(as.vector(PY1)), 4)
+    Discard_Model <- as.logical(as.vector(Discard_Model))
   })
+  return(ClusterMetrics)
+}
+
+fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex){
+
+  ClusterMetrics <- fn_formatClusterMetrics(ClusterMetrics)
   
   Below75 <- subset(ClusterMetrics, SurfaceNoiseScore < 0.75)
   
@@ -175,6 +199,32 @@ fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex
   dev.off()
   
   return(ClusterMetrics)
+}
+
+fn_saveClusterMetrics_mm52 <- function( ClusterMetrics, DataPath.mm52_Quality, Chr, FragIndex ){
+
+  ClusterMetrics <- fn_formatClusterMetrics( ClusterMetrics )
+  
+  Folderpath_Quality <- paste( DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/', sep = '' )
+
+  Filename.ClustMetrics <- paste0( Folderpath_Quality, 'ClusterMetrics.txt' )
+  write.table( x = ClusterMetrics, file = Filename.ClustMetrics, quote = FALSE, sep = '\t', row.names = F )
+  
+  Filename.ClustMetrics <- paste0( Folderpath_Quality, 'ClusterMetrics.RData' )
+  save(ClusterMetrics, file = Filename.ClustMetrics)
+
+  N_Discard <- nrow(subset(ClusterMetrics, Discard == 'Discard'))
+  N_Total <- nrow(ClusterMetrics)
+  
+  Maintitle <- paste(N_Discard, 'Discarded, out of', N_Total, 'Molecules, in Ref Frag', FragIndex)
+  
+  ScoreHist <- qplot() + geom_histogram(aes(x = SurfaceNoiseScore), data = ClusterMetrics, binwidth = 0.05) +
+    ggtitle( label = Maintitle )
+
+  Filename.pdf <- paste0(Folderpath_Quality, 'SurfaceNoiseDist.pdf')
+  pdf(file=Filename.pdf)
+  print(ScoreHist)
+  dev.off()
 }
 
 ##########################################################################################

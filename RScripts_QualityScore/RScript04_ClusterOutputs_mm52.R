@@ -122,7 +122,7 @@ MoleculesZero <- c()
 Filepath.Below75 <- paste0(DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/refFrag', FragIndex, '_Below75.txt')
 system(command = paste('rm -f', Filepath.Below75))
 
-i <- 1
+i <- 8
 ClusterMetrics <- c()
 FilenamesBelow75 <- c()
 
@@ -143,18 +143,34 @@ for(i in 1:length(MoleculeIDs)){
   PngFiles <- Files[grep(pattern = '.png', x = Files)]
   
   if(length(MoleculeFiles) ==   1){
-    if(length(PngFiles) > 0){
-      pngFile <- try(paste0(Folderpath_Quality, PngFiles))
-      pngImage <- try(readPNG(source = pngFile, native = TRUE))
-      #plot(pngImage)
-      CountPNG <- CountPNG + 1
-    }
-    Count <- Count + 1
-    #     print(groupNum)
-    #     print(MoleculeFiles)
     Filename.txt <- paste(Folderpath_Quality, MoleculeFiles, sep = '')
     Data <- read.table(Filename.txt, sep = ' ', header = T, stringsAsFactors = F)
     Data <- Data[,c('intensity1', 'intensity2', 'intensity3')]
+  } else if(length(MoleculeFiles) > 1){
+    print(groupNum)
+    print(MoleculeFiles)
+    Data <- c()
+    for(MoleculeFile in MoleculeFiles){
+      Filename.txt <- paste(Folderpath_Quality, MoleculeFile, sep = '')
+      Data1 <- read.table(Filename.txt, sep = ' ', header = T, stringsAsFactors = F)
+      Data1 <- Data1[,c('intensity1', 'intensity2', 'intensity3')]
+      Data <- rbind(Data, Data1)
+    }
+  }
+  pngImages <- vector("list", length(PngFiles))
+  i_png <- 1
+  
+  if(length(PngFiles) > 0){
+    for(PngFile in PngFiles){
+      pngFile <- try(paste0(Folderpath_Quality, PngFile))
+      pngImages[[i_png]] <- try(readPNG(source = pngFile, native = TRUE))
+      #plot(pngImages[[i_png]])
+      CountPNG <- CountPNG + 1
+      i_png <- i_png + 1
+    }
+  }
+  if(length(MoleculeFiles) > 0){
+    Count <- Count + 1
     Xlim <- range(Data[ Data > 0 ])
     
     Pixel1 <- subset(Data, intensity1 > 0)[,'intensity1']
@@ -198,19 +214,81 @@ for(i in 1:length(MoleculeIDs)){
     print(ClusterOutput[['HistPlot']])
     
     library(grid)
-    if(!(class(pngImage) ==  'try-error')){
-      plot.new()
-      try(grid.raster(pngImage, x = 0.5, y = 0.5, width = 1, height = 1))
-    } else{
-      print(paste(pngFile, 'Not valid'))
+    for(i_png in 1:length(pngImages)){
+      pngImage <- pngImages[[i_png]]
+      print(i_png)
+      if(!(class(pngImage) ==  'try-error')){
+        plot.new()
+        try(grid.raster(pngImage, x = 0.5, y = 0.5, width = 1, height = 1))
+      } else{
+        print(paste(pngFile, 'Not valid'))
+      }
     }
     dev.off()
   } 
+  
   if(length(MoleculeFiles) ==   0){
     CountZero <- CountZero + 1
     MoleculesZero <- c(MoleculesZero, MoleculeID)    
   } 
 }
 
-ClusterMetrics.DF <- fn_saveClusterMetrics(ClusterMetrics, DataPath.mm52_Quality, FragIndex)
+ClusterMetrics.DF <- fn_formatClusterMetrics(ClusterMetrics)
+fn_saveClusterMetrics_mm52(ClusterMetrics, DataPath.mm52_Quality, Chr, FragIndex)
+
+IntensityData_inRange <- merge(
+  x = IntensityData_inRange, 
+  y = ClusterMetrics.DF[,c('MoleculeID', 'Discard')],
+  by = 'MoleculeID'
+)
+
+Plot1 <- fn_plotCurves_diffLength_wOutliers(
+  Data = IntensityData_inRange[,c('PixelNum', 'MoleculeID', 'Intensity', 'Discard')],
+  Xlab = 'PixelNum',
+  Ylab = 'Intensity',
+  MainTitlePhrase = 'curves, with Image processed Outliers'
+)
+
+fn_loadFragmentFiles(
+  Chr = Chr, 
+  FragIndex = FragIndex,
+  saveIn = .GlobalEnv,
+  DataPath.mm52 = DataPath.mm52
+)
+
+########################################################################
+## Drop nMaps that are beyond permissible stretch 
+########################################################################
+Pixels <- 1:nrow(Intensity_Eval)
+StretchAllowed <- 0.15
+Stretch <- aggregate(PixelNum ~ MoleculeID, data = IntensityData_inRange, FUN = max)
+Stretch$PixelNum <- Stretch$PixelNum - 10 * (attributes(IntensityData_inRange)$TruncateLength == 0)
+PixelMin <- (1 - StretchAllowed)*length(Pixels)
+PixelMax <- (1 + StretchAllowed)*length(Pixels)
+Stretch$StretchDrop <- (Stretch$PixelNum > PixelMax) | (Stretch$PixelNum < PixelMin)
+
+Drop_forStretch <- as.vector(subset(Stretch, StretchDrop == TRUE)$MoleculeID)
+
+if(sum(Stretch$StretchDrop > 0)) {
+  Intensity_Eval <- Intensity_Eval[ , (colnames(Intensity_Eval) %w/o% Drop_forStretch) ]
+  Intensity_Eval.D1 <- Intensity_Eval.D1[ , (colnames(Intensity_Eval.D1) %w/o% Drop_forStretch) ]
+}
+
+ClusterMetrics.DF <- merge(
+  x = ClusterMetrics.DF,
+  y = Stretch,
+  by = 'MoleculeID'
+  )
+
+########################################################################
+## Check for functional outliers
+########################################################################
+Outliers <- fn_getFunctionalOutliers(
+  Curves = Intensity_Eval, 
+  Xaxis = Pixels, 
+  Names = list(main = paste(Chr, 'Frag', FragIndex), xlab = 'PixelPosition', ylab = 'Intensity'),
+  N_Bootstrap = 500,
+  trim = 0.10
+)
+Outliers$outliers
 
