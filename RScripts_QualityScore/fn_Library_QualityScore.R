@@ -104,7 +104,7 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, 
   LogitY <- b0 + b1*MaxDiff1 + b2*MaxDiff3 + b3*Conn2
   PY1 <- exp(LogitY)/(1 + exp(LogitY))  ## Prob(Y = 1)
   Discard_Model <- (PY1 > Cutoff)
-
+  
   ClusterMetrics <- list(MoleculeID = Molecule, 
                          NClust1 = NClust1, MaxDiff1 = MaxDiff1, Conn1 = Conn1, Dunn1 = Dunn1, 
                          NClust2 = NClust2, MaxDiff2 = MaxDiff2, Conn2 = Conn2, Dunn2 = Dunn2, 
@@ -112,7 +112,7 @@ fn_ClusterPlotOutput <- function(PixelData, Molecule, FragIndex, StraightScore, 
                          SurfaceNoiseScore = SurfaceNoiseScore, StraightScore = StraightScore,
                          Discard = Discard, PY1 = PY1, Discard_Model = Discard_Model
   )
-
+  
   Maintitle <- paste('Ref Frag', FragIndex, 'Molecule', Molecule, '\n', 
                      'Surface Noise Score:', round(SurfaceNoiseScore, 4), 
                      'Straight Score:', StraightScore, '\n', 
@@ -164,7 +164,7 @@ fn_formatClusterMetrics <- function(ClusterMetrics){
     
     SurfaceNoiseScore <- round(as.numeric(as.vector(SurfaceNoiseScore)), 4)
     StraightScore <- round(as.numeric(as.vector(StraightScore)), 4)
-
+    
     PY1 <- round(as.numeric(as.vector(PY1)), 4)
     Discard_Model <- as.logical(as.vector(Discard_Model))
   })
@@ -172,7 +172,7 @@ fn_formatClusterMetrics <- function(ClusterMetrics){
 }
 
 fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex){
-
+  
   ClusterMetrics <- fn_formatClusterMetrics(ClusterMetrics)
   
   Below75 <- subset(ClusterMetrics, SurfaceNoiseScore < 0.75)
@@ -202,17 +202,17 @@ fn_saveClusterMetrics <- function(ClusterMetrics, DataPath.mf_Quality, FragIndex
 }
 
 fn_saveClusterMetrics_mm52 <- function( ClusterMetrics, DataPath.mm52_Quality, Chr, FragIndex ){
-
+  
   ClusterMetrics <- fn_formatClusterMetrics( ClusterMetrics )
   
   Folderpath_Quality <- paste( DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/', sep = '' )
-
+  
   Filename.ClustMetrics <- paste0( Folderpath_Quality, 'ClusterMetrics.txt' )
   write.table( x = ClusterMetrics, file = Filename.ClustMetrics, quote = FALSE, sep = '\t', row.names = F )
   
   Filename.ClustMetrics <- paste0( Folderpath_Quality, 'ClusterMetrics.RData' )
   save(ClusterMetrics, file = Filename.ClustMetrics)
-
+  
   N_Discard <- nrow(subset(ClusterMetrics, Discard == 'Discard'))
   N_Total <- nrow(ClusterMetrics)
   
@@ -220,11 +220,18 @@ fn_saveClusterMetrics_mm52 <- function( ClusterMetrics, DataPath.mm52_Quality, C
   
   ScoreHist <- qplot() + geom_histogram(aes(x = SurfaceNoiseScore), data = ClusterMetrics, binwidth = 0.05) +
     ggtitle( label = Maintitle )
-
+  
   Filename.pdf <- paste0(Folderpath_Quality, 'SurfaceNoiseDist.pdf')
   pdf(file=Filename.pdf)
   print(ScoreHist)
   dev.off()
+}
+
+fn_loadClusterMetrics_mm52 <- function( ClusterMetrics, DataPath.mm52_Quality, Chr, FragIndex ){
+  Folderpath_Quality <- paste( DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/', sep = '' )
+  Filename.ClustMetrics <- paste0( Folderpath_Quality, 'ClusterMetrics.RData' )
+  load(Filename.ClustMetrics)
+  return(ClusterMetrics)
 }
 
 ##########################################################################################
@@ -288,5 +295,76 @@ fn_returnGoodMolecules <- function(Molecules, FragIndex, DataPath.mf_Quality,
   return(list(Molecules_Select = Molecules_Select, QScore_Cutoff = QScore_Cutoff, 
               QScore_Plot = Plot1234))
 }
+###############################################################################
 
+###############################################################################
+## This function is to get functional outliers, using the package fda.usc
+## This should replace fn_getFunctionalOutliers in fn_Library_Simulation.R
+###############################################################################
+fn_getOutliers <- function(
+  Curves, 
+  Xaxis, 
+  Names = list(main = paste('Seeds', Seed1, 'and', Seed2), xlab = 'PixelPosition', ylab = 'Intensity'),
+  DepthType = c('FM', 'Mode', 'RTukey', 'RProj'),
+  N_Bootstrap = 500,
+  Trim = c('Yes', 'No'),
+  TrimPct = 0.05
+){
+  Curves.fdata <- fdata(
+    mdata = t(Curves), 
+    argvals = Xaxis,
+    rangeval = NULL, 
+    names = Names,
+    fdata2d = FALSE
+  )
+  #XX <- Curves.fdata
+  #XX1 <- fdata.deriv(fdataobj = Curves.fdata, nderiv = 1)
+  #par.df <- list(scale =TRUE)
+  
+  if(Trim == 'Yes'){
+    
+    if(DepthType == 'FM'){
+      Outlier <- outliers.depth.trim(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, trim = TrimPct, dfunc = depth.FM)
+    } else if(DepthType == 'Mode'){
+      Outlier <- outliers.depth.trim(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, trim = TrimPct, dfunc = depth.mode)
+    } else if(DepthType == 'RTukey'){
+      Outlier <- outliers.depth.trim(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, trim = TrimPct, dfunc = depth.RT)
+    } else if(DepthType == 'RProj'){
+      Outlier <- outliers.depth.trim(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, trim = TrimPct, dfunc = depth.RP)
+    } else{
+      Outlier <- outliers.depth.trim(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, trim = TrimPct, dfunc = depth.FM)
+    } 
+  } else{
+    
+    if(DepthType == 'FM'){
+      Outlier <- outliers.depth.pond(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, dfunc = depth.FM)
+    } else if(DepthType == 'Mode'){
+      Outlier <- outliers.depth.pond(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, dfunc = depth.mode)
+    } else if(DepthType == 'RTukey'){
+      Outlier <- outliers.depth.pond(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, dfunc = depth.RT)
+    } else if(DepthType == 'RProj'){
+      Outlier <- outliers.depth.pond(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, dfunc = depth.RP)
+    } else{
+      Outlier <- outliers.depth.pond(fdataobj = Curves.fdata, nb = N_Bootstrap, smo = 0, dfunc = depth.FM)
+    } 
+  }
+
+return(Outlier)
+}
+###############################################################################
+
+###############################################################################
+## This function saves the outlier comparison data
+###############################################################################
+fn_saveOutlierComparison_mm52 <- function( OutlierComparisons, DataPath.mm52_Quality, Chr, FragIndex ){
+  
+  Folderpath_Quality <- paste( DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/', sep = '' )
+  
+  Filename <- paste0( Folderpath_Quality, 'OutlierComparisons.txt' )
+  write.table( x = OutlierComparisons, file = Filename, quote = FALSE, sep = '\t', row.names = F )
+  
+  Filename <- paste0( Folderpath_Quality, 'OutlierComparisons.RData' )
+  save(OutlierComparisons, file = Filename)
+ 
+}
 
