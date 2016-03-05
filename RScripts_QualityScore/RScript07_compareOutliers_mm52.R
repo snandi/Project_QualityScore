@@ -71,7 +71,8 @@ OutlierNames <- c(OutlierNames, 'Outliers_CumScore', 'Outliers_Any')
 
 AllOutliers$Outliers_CumScore <- (AllOutliers$Outliers_CumScore > 0)
 
+## Type II error
 n_D <- nrow(subset(AllOutliers, Discard == 'Discard'))
-n_A <- colSums(subset(AllOutliers, Discard == 'Discard')[,OutlierNames])
+n_A <- colSums(subset(AllOutliers, Discard == 'Discard')[,c('Discard_Model', OutlierNames)])
 
 
