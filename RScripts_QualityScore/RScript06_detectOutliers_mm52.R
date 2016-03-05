@@ -41,13 +41,15 @@ BackbonePixels <- 1
 
 Chr <- 'chr13'
 
-Args <- (commandArgs(TRUE))
-for(i in 1:length(Args)){
-  eval(parse(text = Args[[i]]))
-}
+DataPath.mm52_Intensities <- paste(DataPath.mm52, 'intensities_inca34_', BackbonePixels, 'pixel/', sep = '')
+DataPath.mm52_Quality <- paste(DataPath.mm52, 'Project_QualityScore/', sep = '')
+
+# Args <- (commandArgs(TRUE))
+# for(i in 1:length(Args)){
+#   eval(parse(text = Args[[i]]))
+# }
 ########################################################################
 
-# for(FragIndex in c())
 fn_detectOutliers_mm52 <- function(
   Chr, 
   FragIndex, 
@@ -60,8 +62,6 @@ fn_detectOutliers_mm52 <- function(
   ConversionFactor <- 206
   BasePairInterval <- ConversionFactor
   BackbonePixels <- 1
-  DataPath.mm52_Intensities <- paste(DataPath.mm52, 'intensities_inca34_', BackbonePixels, 'pixel/', sep = '')
-  DataPath.mm52_Quality <- paste(DataPath.mm52, 'Project_QualityScore/', sep = '')
   
   ########################################################################
   ## Enter Fragment Details                                             
@@ -308,19 +308,32 @@ fn_detectOutliers_mm52 <- function(
   Folderpath_Quality <- paste( DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/', sep = '' )
   Filename <- paste0( Folderpath_Quality, 'OutlierComparisons.pdf' )
   pdf(file = Filename, onefile = TRUE)
-  Plot_Discard
-  Plot_Discard_Model
-  PlotSmooth_Discard
-  PlotSmooth_Outliers_Any
+  try(plot(Plot_Discard))
+  try(plot(Plot_Discard_Model))
+  try(plot(PlotSmooth_Discard))
+  try(plot(PlotSmooth_Outliers_Any))
   try(dev.off())
   try(dev.off())
 }
 
-fn_detectOutliers_mm52(
-  Chr = Chr, 
-  FragIndex = FragIndex, 
-  DataPath.mm52 = DataPath.mm52
-)
+# fn_detectOutliers_mm52(
+#   Chr = Chr, 
+#   FragIndex = FragIndex, 
+#   DataPath.mm52 = DataPath.mm52
+# )
 
 
 
+########################################################################
+## For parallel execution
+########################################################################
+Filename <- paste0(DataPath.mm52_Quality, Chr, '/Chr13_Fragments.txt')
+Frags <- read.table(file = Filename, header = FALSE, sep = ',')
+Frags <- Frags$V1
+NCores <- 20
+#cl <- makeCluster(NCores)
+cl <- makePSOCKcluster(NCores)
+doParallel::registerDoParallel(cl)
+foreach(FragIndex = Frags, .inorder=FALSE, .packages=Packages_Par) %dopar% fn_detectOutliers_mm52(Chr = Chr, FragIndex, DataPath.mm52)
+stopCluster(cl)
+gc()

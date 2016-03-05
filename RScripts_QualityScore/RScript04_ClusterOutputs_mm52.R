@@ -47,8 +47,6 @@ DataPath.mm52_Quality <- paste(DataPath.mm52, 'Project_QualityScore/', sep = '')
 ########################################################################
 Chr <- 'chr13'
 #FragIndex <- 7465
-Filename <- paste0(DataPath.mm52_Quality, Chr, '/Chr13_Fragments.txt')
-Frags <- read.table(file = Filename, header = FALSE, sep = ',')
 
 # Args <- (commandArgs(TRUE))
 # for(i in 1:length(Args)){
@@ -268,6 +266,8 @@ fn_ClusterOutputs_mm52 <- function(
 ########################################################################
 ## For parallel execution
 ########################################################################
+Filename <- paste0(DataPath.mm52_Quality, Chr, '/Chr13_Fragments.txt')
+Frags <- read.table(file = Filename, header = FALSE, sep = ',')
 Frags <- Frags$V1
 NCores <- 20
 #cl <- makeCluster(NCores)
