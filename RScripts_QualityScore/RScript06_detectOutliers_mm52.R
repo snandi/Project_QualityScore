@@ -163,7 +163,7 @@ fn_detectOutliers_mm52 <- function(
     DepthType = 'FM',
     N_Bootstrap = 500,
     Trim = 'Yes',
-    TrimPct = 0.1
+    TrimPct = 0.15
   )
   Outliers_FM_Trim$outliers
   ClusterMetrics$Outliers_FM_Trim <- ClusterMetrics$MoleculeID %in% Outliers_FM_Trim$outliers
@@ -189,7 +189,7 @@ fn_detectOutliers_mm52 <- function(
     DepthType = 'Mode',
     N_Bootstrap = 500,
     Trim = 'Yes',
-    TrimPct = 0.1
+    TrimPct = 0.15
   )
   Outliers_Mode_Trim$outliers
   ClusterMetrics$Outliers_Mode_Trim <- ClusterMetrics$MoleculeID %in% Outliers_Mode_Trim$outliers
@@ -215,7 +215,7 @@ fn_detectOutliers_mm52 <- function(
     DepthType = 'RTukey',
     N_Bootstrap = 500,
     Trim = 'Yes',
-    TrimPct = 0.1
+    TrimPct = 0.15
   )
   Outliers_RTukey_Trim$outliers
   ClusterMetrics$Outliers_RTukey_Trim <- ClusterMetrics$MoleculeID %in% Outliers_RTukey_Trim$outliers
@@ -241,7 +241,7 @@ fn_detectOutliers_mm52 <- function(
     DepthType = 'RProj',
     N_Bootstrap = 500,
     Trim = 'Yes',
-    TrimPct = 0.1
+    TrimPct = 0.15
   )
   Outliers_RProj_Trim$outliers
   ClusterMetrics$Outliers_RProj_Trim <- ClusterMetrics$MoleculeID %in% Outliers_RProj_Trim$outliers
@@ -274,7 +274,7 @@ fn_detectOutliers_mm52 <- function(
   )
   ClusterMetrics$Outliers_CumScore <- rowSums(x = ClusterMetrics[,OutlierNames])
   
-  ClusterMetrics$Outliers_Any <- ( ClusterMetrics$Outliers_CumScore > 1 )
+  ClusterMetrics$Outliers_Any <- ( ClusterMetrics$Outliers_CumScore > 0 )
   
   OutlierNames <- c(OutlierNames, 'Outliers_CumScore', 'Outliers_Any')
   #View(ClusterMetrics[,c('MoleculeID', 'Discard', 'Discard_Model', 'Outliers_CumScore', 'Outliers_Any')])
@@ -306,7 +306,7 @@ fn_detectOutliers_mm52 <- function(
   fn_saveOutlierComparison_mm52( OutlierComparisons, DataPath.mm52_Quality, Chr, FragIndex )
   
   Folderpath_Quality <- paste( DataPath.mm52_Quality, Chr, '/refFrag_', FragIndex, '/', sep = '' )
-  Filename <- paste0( Folderpath_Quality, 'OutlierComparisons.pdf' )
+  Filename <- paste0( Folderpath_Quality, 'OutlierComparisons_', FragIndex, '.pdf' )
   pdf(file = Filename, onefile = TRUE)
   try(plot(Plot_Discard))
   try(plot(Plot_Discard_Model))
@@ -330,7 +330,7 @@ fn_detectOutliers_mm52 <- function(
 Filename <- paste0(DataPath.mm52_Quality, Chr, '/Chr13_Fragments.txt')
 Frags <- read.table(file = Filename, header = FALSE, sep = ',')
 Frags <- Frags$V1
-NCores <- 20
+NCores <- 22
 #cl <- makeCluster(NCores)
 cl <- makePSOCKcluster(NCores)
 doParallel::registerDoParallel(cl)

@@ -69,10 +69,35 @@ OutlierNames <- c(
 )
 OutlierNames <- c(OutlierNames, 'Outliers_CumScore', 'Outliers_Any')
 
-AllOutliers$Outliers_CumScore <- (AllOutliers$Outliers_CumScore > 0)
+colnames(AllOutliers) <- gsub(pattern = 'Outliers_', replacement = '', x = colnames(AllOutliers))
+OutlierNames <- gsub(pattern = 'Outliers_', replacement = '', x = OutlierNames)
+
+#AllOutliers$CumScore <- (AllOutliers$CumScore > 0)
+#View(AllOutliers[,c('FragIndex', 'Discard', 'Any', 'CumScore')])
+
+AllOutliers$MoleculeID <- as.factor(AllOutliers$MoleculeID)
+library(gdata)
+AllOutliers$Curve <- as.numeric(AllOutliers$MoleculeID)
+
+AllOutliers$Discard_Num <- (AllOutliers$Discard == 'Discard')
+str(AllOutliers)
+
+aggregate(Discard_Num ~ FragIndex, data = AllOutliers, FUN = sum)
+
+subset(AllOutliers, FragIndex == 3326)[,c('Curve', 'Discard_Num', OutlierNames)]
 
 ## Type II error
 n_D <- nrow(subset(AllOutliers, Discard == 'Discard'))
+n_D/nrow(AllOutliers)
 n_A <- colSums(subset(AllOutliers, Discard == 'Discard')[,c('Discard_Model', OutlierNames)])
 
+Type2Errors <- c()
+for(Frag in unique(AllOutliers$FragIndex)){
+  Subset <- subset(AllOutliers, FragIndex == Frag & Discard == 'Discard')
+  n_D <- nrow(Subset)
+  if(n_D > 0)
+  n_A <- colSums(Subset[,OutlierNames])/n_D
+  Type2Errors <- rbind(Type2Errors, cbind(FragIndex = Frag, n_D = n_D, t(cbind(n_A))))
+}
 
+FragIndex <- 3326
